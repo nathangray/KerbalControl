@@ -17,19 +17,14 @@
 // For software debouncing button presses
 #include <Bounce.h>
 
+// For scheduling things
+#include <Metro.h>
+
 // Graphic LCD
 #include <ST7565.h>
-
-
+  
 // KPS connection indicator
 const byte KSP_CONNECTED_LED = 2;
-
-// Warnings
-const byte WARNING_PIN = 23;
-const byte WARNING_TIME = 100;
-byte warn;
-long warningStop;
-
 
 // Structs for keyboard buttons
 typedef struct {
@@ -85,9 +80,8 @@ void setup() {
   
   // Init system status
   pinMode(KSP_CONNECTED_LED, OUTPUT);
-  pinMode(WARNING_PIN, OUTPUT);
   digitalWrite(KSP_CONNECTED_LED, HIGH);
-  digitalWrite(WARNING_PIN, HIGH);
+  warning_init();
   
   // Initialize pins - control lights
   for(byte i = 0; i < light_count; i++)
@@ -114,14 +108,14 @@ void setup() {
   Joystick.hat(-1);
   
   Serial1.print("Good morning,   Dave");
-  delay(5000);
+  delay(1000);
 }
 
 void loop() {
   // Check for serial info, send direct commands
   KSP.update();
   
-  // Warnings about status, etc
+  // Check for warnings
   warning_check();
   
   // Status LEDs, etc.
@@ -154,8 +148,15 @@ void update_status() {
   Serial1.print(0x01, BYTE);
   Serial1.print("AP: ");Serial1.print(KSP.vessel.AP);
   Serial1.print(0xFE,BYTE);   //command flag
-  Serial1.write(192);
+  Serial1.write(192);         // new line
   Serial1.print("PE: ");Serial1.print(KSP.vessel.PE);
+  
+  // Display Electric
+  /*
+  Serial1.print(0xFE, BYTE);
+  Serial1.print(0x01, BYTE);
+  Serial1.print(KSP.vessel.ECharge); Serial1.print("/"); Serial1.print(KSP.vessel.EChargeTot);
+  */
 }
 
 /**
@@ -198,7 +199,6 @@ void update_buttons()
             case BRAKES: value=KSP.controlStatus(AGBrakes); break;   
             case ABORT: value=KSP.controlStatus(AGAbort); break;
           }
-          Serial1.print(!value);delay(100);
           KSP.setControl(buttons[i].control_code, !value);
         }
       }
@@ -229,59 +229,13 @@ void set_axies()
   Joystick.sliderLeft(analogRead(2));
 }
 
-/**
- * Check various stuff like if we're still connected to KSP, fuel in the tank, etc.
- */
-void warning_check()
-{
-  digitalWrite(WARNING_PIN, HIGH);
-  
-  // Check to see if we're connected to KSP
-  if(KSP.connected())
-  {
-    digitalWrite(KSP_CONNECTED_LED, HIGH);
-  }
-  else
-  {
-    // Turn on connection light
-    digitalWrite(KSP_CONNECTED_LED, LOW);
-    
-    // Turn off all status lights
-    for(byte i = 0; i < light_count; i++)
-    {
-      digitalWrite(lights[i].pin, HIGH);
-    }
-    return;
-  }
-  
-  // Fuel check
-  if(KSP.vessel.LiquidFuel <= 5)
-  {
-    warn=1;
-  }
-  
-  if(warn)
-  {
-    warning();
-  }
-}
-
-/**
- * Sound a warning
- */
-void warning()
-{
-  
-  digitalWrite(WARNING_PIN, LOW);
-  
-}
 
 /**
  * Check and handle any touch controls
  */
 void getTouch()
 {
-  for(byte i = 23; i < 24; i++)
+  for(byte i = 17; i < 19; i++)
   {
     Joystick.button(i, touchRead(i) > 3000);
   }

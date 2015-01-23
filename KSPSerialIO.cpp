@@ -8,6 +8,7 @@
 #include "Arduino.h"
 #include "KSPSerialIO.h"
 
+// Change this if you need to talk to something else
 #define Serial Serial
 
 
