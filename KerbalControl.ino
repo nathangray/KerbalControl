@@ -17,6 +17,10 @@
 // For software debouncing button presses
 #include <Bounce.h>
 
+// Graphic LCD
+#include <ST7565.h>
+
+
 // KPS connection indicator
 const byte KSP_CONNECTED_LED = 2;
 
@@ -74,6 +78,7 @@ void setup() {
   Keyboard.begin();
   Joystick.begin();
   
+  // Using a Sparkfun serial backpack on Serial1
   Serial1.begin(9600);
   Serial1.print(0xFE, BYTE);
   Serial1.print(0x01, BYTE);
@@ -144,11 +149,13 @@ void update_status() {
     digitalWrite(lights[i].pin, !KSP.controlStatus(lights[i].status_flag));
   }
   
-  // Display fuel
+  // Display AP & PE
   Serial1.print(0xFE, BYTE);
   Serial1.print(0x01, BYTE);
-  Serial1.print("Fuel: ");Serial1.print(KSP.vessel.LiquidFuel);
-  Serial1.print("      ");
+  Serial1.print("AP: ");Serial1.print(KSP.vessel.AP);
+  Serial1.print(0xFE,BYTE);   //command flag
+  Serial1.write(192);
+  Serial1.print("PE: ");Serial1.print(KSP.vessel.PE);
 }
 
 /**
