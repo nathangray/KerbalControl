@@ -48,6 +48,9 @@ KB_Button buttons[] = {
   {5, true,  3,  0xFF,   Bounce(5, BOUNCE_TIME)},
   {6, true,  4,  GEAR,   Bounce(6, BOUNCE_TIME)},
   {7, false, 5,  BRAKES, Bounce(7, BOUNCE_TIME)},
+  {19,false, 5,  LIGHTS, Bounce(19, BOUNCE_TIME)},
+  {20,false, 5,  SAS,    Bounce(20, BOUNCE_TIME)},
+  {21,false, 5,  RCS,    Bounce(21, BOUNCE_TIME)},
 };
 
 // Structs for lights
@@ -58,6 +61,8 @@ typedef struct {
 
 // Define pins and their corresponding control flag
 KB_LED lights[] = {
+  { 8, AGRCS},
+  { 9, AGSAS},
   {10, AGLight},
   {11, AGGear},
   {12, AGBrakes},
@@ -143,10 +148,12 @@ void update_status() {
     digitalWrite(lights[i].pin, !KSP.controlStatus(lights[i].status_flag));
   }
   
-  // Display AP & PE
+  // Display AP (& PE)
   Serial1.print(0xFE, BYTE);
-  Serial1.print(0x01, BYTE);
+  //Serial1.print(0x01, BYTE);
+  Serial1.write(192);         // new line
   Serial1.print("AP: ");Serial1.print(KSP.vessel.AP);
+  /*
   Serial1.print(0xFE,BYTE);   //command flag
   Serial1.write(192);         // new line
   Serial1.print("PE: ");Serial1.print(KSP.vessel.PE);

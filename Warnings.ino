@@ -6,6 +6,9 @@ const byte WARNING_PIN = 23;
 const byte WARNING_CLEAR_PIN = 22;
 Bounce clear_button(WARNING_CLEAR_PIN, BOUNCE_TIME);
 
+const float LOW_RESOURCE = 0.05;
+const float NO_RESOURCE = 0.01;
+
 // Severity levels
 const byte WARN_OFF = 0;  // Nothing
 const byte WARN_WARN = 1; // Hey.
@@ -33,9 +36,9 @@ typedef struct {
 
 // Define warnings and their severity
 KP_Warning warnings[] = {
-  {"Low fuel", WARN_WARN,  false, false, &low_fuel},
-  {"Low power", WARN_WARN, false, false, &low_power},
-  {"NO POWER", WARN_ALARM, false, false, &no_power}
+  {"Low fuel     ", WARN_WARN,  false, false, &low_fuel},
+  {"Low power    ", WARN_WARN, false, false, &low_power},
+  {"NO POWER     ", WARN_ALARM, false, false, &no_power}
 };
 const int warning_count = sizeof(warnings) / sizeof(warnings[0]);
 
@@ -50,6 +53,9 @@ void warning_init()
 // Reset silenced warnings
 void warning_reset()
 {
+  Serial1.print(0xFE, BYTE);
+  //Serial1.print(0x01, BYTE);
+  Serial1.write(0x80);         // new line
   Serial1.print("Alarm reset");
   for(byte i = 0; i < warning_count; i++)
   {
@@ -61,6 +67,9 @@ void warning_reset()
 // Silence silenced warnings
 void warning_silence()
 {
+  Serial1.print(0xFE, BYTE);
+  //Serial1.print(0x01, BYTE);
+  Serial1.write(0x80);         // new line
   Serial1.print("Alarm silence");
   for(byte i = 0; i < warning_count; i++)
   {
@@ -76,7 +85,7 @@ void warning_check()
 {
   // This is for bounce
   clear_button.update();
-  
+;
   // SILENCE
   if(clear_button.fallingEdge())
   {
@@ -93,6 +102,11 @@ void warning_check()
   {
     warning();
     return;
+  }
+  else if (warn_level == WARN_OFF)
+  {
+    Serial1.write(0x80);         // new line
+    Serial1.print("                ");
   }
   
   // Check to see if we're connected to KSP
@@ -117,22 +131,26 @@ void warning_check()
   }
   for(byte i = 0; i < warning_count; i++)
   {
-    if(warnings[i].silence || warnings[i].triggered) continue;
-    if(warnings[i].check())
+    if(warnings[i].silence) continue;
+    
+    if(!warnings[i].triggered && warnings[i].check())
     {
       warnings[i].triggered = true;
       warn_level = warnings[i].severity;
       
-      Serial1.print(0xFE, BYTE);
-      Serial1.print(0x01, BYTE);
-      Serial1.print(warnings[i].message);
       
       // Warnings auto-silence
       if(warn_level == WARN_WARN)
       {
         warnings[i].silence = true;
       }
-      break;
+    }
+    if(warnings[i].triggered)
+    {
+      
+      Serial1.print(0xFE, BYTE);
+      Serial1.print(0x01, BYTE);
+      Serial1.print(warnings[i].message);
     }
   }
   if(warn_level || digitalRead(WARNING_PIN) == LOW)
@@ -166,7 +184,7 @@ void warning()
       break;
     case WARN_ALARM:
       // Constant
-      tone(WARNING_PIN, 1);
+      tone(WARNING_PIN, 2);
       break;
   }
   interrupts();
@@ -175,16 +193,16 @@ void warning()
 // Check for low fuel
 boolean low_fuel()
 {
-  return KSP.vessel.LiquidFuelTot > 0 && (KSP.vessel.LiquidFuel / KSP.vessel.LiquidFuelTot <= 0.05);
+  return KSP.vessel.LiquidFuelTot > 0 && (KSP.vessel.LiquidFuel / KSP.vessel.LiquidFuelTot <= LOW_RESOURCE);
 }
 
 // Check for low power
 boolean low_power()
 {
-  return KSP.vessel.EChargeTot > 0 && KSP.vessel.ECharge <= 45;
+  return KSP.vessel.EChargeTot > 0 && (KSP.vessel.ECharge / KSP.vessel.EChargeTot <= LOW_RESOURCE);
 }
 // Check for no power
 boolean no_power()
 {
-  return KSP.vessel.ECharge <= 1;
+  return KSP.vessel.EChargeTot > 0 && (KSP.vessel.ECharge / KSP.vessel.EChargeTot <= NO_RESOURCE);
 }
